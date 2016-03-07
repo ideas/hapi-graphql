@@ -1,0 +1,40 @@
+{
+  "name": "@ideapod/hapi-graphql",
+  "version": "0.0.0",
+  "description": "GraphQL plugin for the hapi framework.",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "lab --assert code --coverage --lint --verbose"
+  },
+  "engines": {
+    "node": ">=5.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ideas/hapi-graphql.git"
+  },
+  "keywords": [
+    "hapi",
+    "graphql"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ideas/hapi-graphql/issues"
+  },
+  "homepage": "https://github.com/ideas/hapi-graphql",
+  "dependencies": {
+    "boom": "3.1.x",
+    "joi": "8.0.x"
+  },
+  "peerDependencies": {
+    "graphql": "0.4.x",
+    "hapi": ">=12.0.0"
+  },
+  "devDependencies": {
+    "@ideapod/eslint-config": "2.0.x",
+    "code": "2.1.x",
+    "graphql": "0.4.x",
+    "hapi": "13.0.x",
+    "lab": "10.2.x"
+  }
+}
