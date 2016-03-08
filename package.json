@@ -4,7 +4,7 @@
   "description": "GraphQL plugin for the hapi framework.",
   "main": "src/index.js",
   "scripts": {
-    "test": "lab --assert code --coverage --lint --verbose"
+    "test": "lab --assert code --coverage --ignore '__core-js_shared__' --lint --verbose"
   },
   "engines": {
     "node": ">=5.0.0"
