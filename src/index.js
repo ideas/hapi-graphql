@@ -9,16 +9,13 @@ const Parser = require('./parser');
 const Validator = require('./validator');
 
 function getGraphQLParams(request, payload) {
-  payload = payload || {};
-
   const query = request.query.query || payload.query;
 
   let variables = request.query.variables || payload.variables;
   if (variables && typeof variables === 'string') {
     try {
       variables = JSON.parse(variables);
-    }
-    catch (error) {
+    } catch (err) {
       throw Boom.badRequest('Variables are invalid JSON.');
     }
   }
@@ -26,7 +23,7 @@ function getGraphQLParams(request, payload) {
   const operationName = request.query.operationName || payload.operationName;
 
   return { query, variables, operationName };
-};
+}
 
 exports.register = function (server, options, next) {
   const validation = Validator.validate(options);
@@ -44,15 +41,63 @@ exports.register = function (server, options, next) {
 
     function handler(route, options) {
       return function (request, reply) {
-        const response = Parser.parse(request)
+        Parser.parse(request)
           .then((payload) => {
-            const params = getGraphQLParams(request, payload);
-            return GraphQL.graphql(schema, params.query, {}, params.variables, params.operationName);
-          });
+            const params = getGraphQLParams(request, payload || {});
 
-        reply(response);
-      }
-    };
+            if (!params.query) {
+              return Boom.badRequest('Must provide query string.');
+            }
+
+            const source = new GraphQL.Source(params.query, 'GraphQL request');
+
+            let documentAST;
+            try {
+              documentAST = GraphQL.parse(source);
+            } catch (err) {
+              return { errors: [err] };
+            }
+
+            const errors = GraphQL.validate(schema, documentAST);
+            if (errors.length > 0) {
+              return { errors };
+            }
+
+            if (request.method === 'get') {
+              const operationAST = GraphQL.getOperationAST(documentAST, params.operationName);
+              if (operationAST && operationAST.operation !== 'query') {
+                return Boom.methodNotAllowed(
+                  `Can only perform a ${operationAST.operation} operation from a POST request.`
+                );
+              }
+            }
+
+            return GraphQL.graphql(
+              schema,
+              params.query,
+              query.rootValue,
+              params.variables,
+              params.operationName
+            );
+          })
+          .then((result) => {
+            if (result.errors) {
+              const errors = result.errors.map((error) => {
+                if (error.locations) {
+                  return { message: error.message, locations: error.locations };
+                }
+
+                return { message: error.message };
+              });
+
+              reply({ errors }).code(400);
+              return;
+            }
+
+            reply(result);
+          });
+      };
+    }
 
     handler.defaults = function (method) {
       if (method === 'post') {

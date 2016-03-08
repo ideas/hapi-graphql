@@ -13,7 +13,7 @@ exports.register = function (server, options, next) {
             type: GraphQL.GraphQLString
           }
         },
-        resolve: (source, args) => 'Hello ' + (args.who || 'World')
+        resolve: (source, args) => `Hello ${args.who || 'World'}`
       },
       thrower: {
         type: new GraphQL.GraphQLNonNull(GraphQL.GraphQLString),
