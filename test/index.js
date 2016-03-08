@@ -284,5 +284,215 @@ lab.describe('Plugin', () => {
           expect(response.payload).to.equal('{"data":{"test":"Hello World"}}');
         });
     });
+
+    lab.it('allows sending a mutation via POST', { plan: 2 }, () => {
+      const server = new Hapi.Server();
+      server.connection();
+
+      const plugins = [
+        { register: StubSchema },
+        { register: HapiGraphql, options: { query: { schema: 'stubs/schema' } } }
+      ];
+
+      return server.register(plugins)
+        .then(() => server.initialize())
+        .then(() => {
+          const url = urlString();
+          const payload = { query: 'mutation TestMutation { writeTest { test } }' };
+
+          return server.inject({ method: 'POST', url, payload });
+        })
+        .then((response) => {
+          expect(response.statusCode).to.equal(200);
+          expect(response.payload).to.equal('{"data":{"writeTest":{"test":"Hello World"}}}');
+        });
+    });
+
+    lab.it('supports POST JSON query with string variables', { plan: 2 }, () => {
+      const server = new Hapi.Server();
+      server.connection();
+
+      const plugins = [
+        { register: StubSchema },
+        { register: HapiGraphql, options: { query: { schema: 'stubs/schema' } } }
+      ];
+
+      return server.register(plugins)
+        .then(() => server.initialize())
+        .then(() => {
+          const url = urlString();
+          const payload = {
+            query: 'query helloWho($who: String){ test(who: $who) }',
+            variables: JSON.stringify({ who: 'Dolly' })
+          };
+
+          return server.inject({ method: 'POST', url, payload });
+        })
+        .then((response) => {
+          expect(response.statusCode).to.equal(200);
+          expect(response.payload).to.equal('{"data":{"test":"Hello Dolly"}}');
+        });
+    });
+
+    lab.it('supports POST JSON query with JSON variables', { plan: 2 }, () => {
+      const server = new Hapi.Server();
+      server.connection();
+
+      const plugins = [
+        { register: StubSchema },
+        { register: HapiGraphql, options: { query: { schema: 'stubs/schema' } } }
+      ];
+
+      return server.register(plugins)
+        .then(() => server.initialize())
+        .then(() => {
+          const url = urlString();
+          const payload = {
+            query: 'query helloWho($who: String){ test(who: $who) }',
+            variables: { who: 'Dolly' }
+          };
+
+          return server.inject({ method: 'POST', url, payload });
+        })
+        .then((response) => {
+          expect(response.statusCode).to.equal(200);
+          expect(response.payload).to.equal('{"data":{"test":"Hello Dolly"}}');
+        });
+    });
+
+    lab.it('supports POST JSON query with GET variable values', { plan: 2 }, () => {
+      const server = new Hapi.Server();
+      server.connection();
+
+      const plugins = [
+        { register: StubSchema },
+        { register: HapiGraphql, options: { query: { schema: 'stubs/schema' } } }
+      ];
+
+      return server.register(plugins)
+        .then(() => server.initialize())
+        .then(() => {
+          const url = urlString({
+            variables: JSON.stringify({ who: 'Dolly' })
+          });
+
+          const payload = { query: 'query helloWho($who: String){ test(who: $who) }' };
+
+          return server.inject({ method: 'POST', url, payload });
+        })
+        .then((response) => {
+          expect(response.statusCode).to.equal(200);
+          expect(response.payload).to.equal('{"data":{"test":"Hello Dolly"}}');
+        });
+    });
+
+    lab.it('supports POST raw text query with GET variable values', { plan: 2 }, () => {
+      const server = new Hapi.Server();
+      server.connection();
+
+      const plugins = [
+        { register: StubSchema },
+        { register: HapiGraphql, options: { query: { schema: 'stubs/schema' } } }
+      ];
+
+      return server.register(plugins)
+        .then(() => server.initialize())
+        .then(() => {
+          const url = urlString({
+            variables: JSON.stringify({ who: 'Dolly' })
+          });
+
+          const payload = 'query helloWho($who: String){ test(who: $who) }';
+
+          const headers = { 'content-type': 'application/graphql' }
+
+          return server.inject({ method: 'POST', url, payload, headers });
+        })
+        .then((response) => {
+          expect(response.statusCode).to.equal(200);
+          expect(response.payload).to.equal('{"data":{"test":"Hello Dolly"}}');
+        });
+    });
+
+    lab.it('allows POST with operation name', { plan: 2 }, () => {
+      const server = new Hapi.Server();
+      server.connection();
+
+      const plugins = [
+        { register: StubSchema },
+        { register: HapiGraphql, options: { query: { schema: 'stubs/schema' } } }
+      ];
+
+      return server.register(plugins)
+        .then(() => server.initialize())
+        .then(() => {
+          const url = urlString({
+            variables: JSON.stringify({ who: 'Dolly' })
+          });
+
+          const payload = {
+            query: `
+              query helloYou { test(who: "You"), ...shared }
+              query helloWorld { test(who: "World"), ...shared }
+              query helloDolly { test(who: "Dolly"), ...shared }
+              fragment shared on QueryRoot {
+                shared: test(who: "Everyone")
+              }
+            `,
+            operationName: 'helloWorld'
+          }
+
+          return server.inject({ method: 'POST', url, payload });
+        })
+        .then((response) => {
+          expect(response.statusCode).to.equal(200);
+          expect(response.result).to.deep.equal({
+            data: {
+              test: 'Hello World',
+              shared: 'Hello Everyone',
+            }
+          }, { prototype: false});
+        });
+    });
+
+    lab.it('allows POST with GET operation name', { plan: 2 }, () => {
+      const server = new Hapi.Server();
+      server.connection();
+
+      const plugins = [
+        { register: StubSchema },
+        { register: HapiGraphql, options: { query: { schema: 'stubs/schema' } } }
+      ];
+
+      return server.register(plugins)
+        .then(() => server.initialize())
+        .then(() => {
+          const url = urlString({
+            operationName: 'helloWorld'
+          });
+
+          const payload = `
+            query helloYou { test(who: "You"), ...shared }
+            query helloWorld { test(who: "World"), ...shared }
+            query helloDolly { test(who: "Dolly"), ...shared }
+            fragment shared on QueryRoot {
+              shared: test(who: "Everyone")
+            }
+          `;
+
+          const headers = { 'content-type': 'application/graphql' };
+
+          return server.inject({ method: 'POST', url, payload, headers });
+        })
+        .then((response) => {
+          expect(response.statusCode).to.equal(200);
+          expect(response.result).to.deep.equal({
+            data: {
+              test: 'Hello World',
+              shared: 'Hello Everyone',
+            }
+          }, { prototype: false});
+        });
+    });
   });
 });
